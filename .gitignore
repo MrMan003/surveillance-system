@@ -1,0 +1,62 @@
+# --- model weights ---------------------------------------------------------
+# Checkpoints are large binaries redistributed under their own licences.
+# Fetch them with scripts/; never commit them.
+weights/*
+!weights/.gitkeep
+*.pt
+*.pth
+*.ckpt
+*.onnx
+
+# --- pipeline outputs ------------------------------------------------------
+# Rendered video and JSON manifests may contain biometric data. Keeping these
+# out of git is a governance requirement, not a tidiness preference.
+outputs/*
+!outputs/.gitkeep
+*.mp4
+*.mkv
+*.avi
+
+# --- gallery ---------------------------------------------------------------
+# Enrolled face images and serialised FAISS indices are personal data.
+datasets/gallery/*
+!datasets/gallery/.gitkeep
+*.faiss
+*.index
+
+# --- caches ----------------------------------------------------------------
+.cache/
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.ipynb_checkpoints/
+
+# --- packaging -------------------------------------------------------------
+build/
+dist/
+*.egg-info/
+.eggs/
+
+# --- environments ----------------------------------------------------------
+.venv/
+venv/
+env/
+.env
+
+# --- editors ---------------------------------------------------------------
+.vscode/
+.idea/
+*.swp
+.DS_Store
+
+# --- scratch ---------------------------------------------------------------
+check.py
+configs/_scratch.*
+
+# --- local overrides -------------------------------------------------------
+# configs/default.yaml IS committed. Machine-specific overrides are not.
+configs/local.yaml
+configs/*.local.yaml

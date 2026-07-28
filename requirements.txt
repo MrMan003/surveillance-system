@@ -1,0 +1,53 @@
+# ---------------------------------------------------------------------------
+# surveillance-system runtime dependencies
+#
+# Target platform : Kaggle "GPU T4 x2" accelerator image
+#                   Python 3.11 | CUDA 12.x | Tesla T4 (Turing, sm_75, 16 GB)
+#
+# NOTE ON TORCH
+#   Kaggle ships a CUDA-enabled torch/torchvision in the base image. Do NOT
+#   reinstall them from PyPI inside a notebook -- the default PyPI wheel resolves
+#   to a different CUDA runtime and silently breaks the GPU. The torch pins below
+#   are the *minimums* this codebase is written against; leave the preinstalled
+#   build in place if it satisfies them.
+#
+# NOTE ON sm_75
+#   Turing has no bfloat16 tensor cores. Mixed precision on the T4 must use
+#   float16 autocast, which is what RecognitionConfig.amp selects.
+#
+# NOTE ON macOS
+#   onnxruntime-gpu has no macOS wheels. Local development installs plain
+#   onnxruntime instead; see requirements-local.txt.
+# ---------------------------------------------------------------------------
+
+# --- core numerics ---------------------------------------------------------
+numpy>=1.26.0,<2.1.0
+scipy>=1.11.0
+PyYAML>=6.0.1
+
+# --- deep learning ---------------------------------------------------------
+torch>=2.1.0
+torchvision>=0.16.0
+torchmetrics>=1.3.0
+
+# --- video I/O -------------------------------------------------------------
+# PyAV exposes raw PTS/DTS and time_base, which is the entire reason we do not
+# use cv2.VideoCapture: OpenCV discards container timestamps and reports a
+# single averaged FPS, which is wrong for variable-frame-rate CCTV footage.
+av>=12.0.0,<15.0.0
+opencv-python-headless>=4.9.0.80
+
+# --- detection -------------------------------------------------------------
+ultralytics>=8.2.0,<8.4.0          # YOLOv8s person detector
+insightface==0.7.3                 # SCRFD face detector + 5-point landmarks
+onnxruntime-gpu>=1.18.0            # CUDA 12 execution provider for SCRFD
+
+# --- gallery search --------------------------------------------------------
+# faiss-cpu is the default: an IndexFlatIP over a few thousand 512-d vectors
+# is microseconds on CPU, and it keeps VRAM free for the detectors. Swap to
+# faiss-gpu-cu12 only for galleries beyond ~1e6 identities.
+faiss-cpu>=1.8.0
+
+# --- utilities -------------------------------------------------------------
+tqdm>=4.66.0
+psutil>=5.9.0

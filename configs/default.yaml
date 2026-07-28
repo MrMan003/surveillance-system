@@ -1,0 +1,192 @@
+# Default configuration for the surveillance system.
+#
+# GENERATED FILE -- do not edit by hand.
+# Regenerate with:  python scripts/generate_default_config.py
+#
+# Every key maps 1:1 to a field on a dataclass in configs/config.py. Override
+# any value at runtime without editing this file:
+#
+#   SURV_DETECTION__BODY_CONF=0.5 SURV_RUNTIME__DEVICE=cuda:0 python main.py
+
+paths:
+  root: .
+  weights_dir: weights
+  outputs_dir: outputs
+  cache_dir: .cache
+  log_dir: outputs/logs
+  gallery_dir: datasets/gallery
+video:
+  input_path: null
+  allowed_suffixes:
+  - .mp4
+  - .mkv
+  stream_index: 0
+  thread_type: AUTO
+  thread_count: 0
+  strict_vfr: true
+  start_seconds: null
+  end_seconds: null
+  max_frames: null
+  stride: 1
+  prefetch_depth: 16
+  pixel_format: bgr24
+  allow_missing_dts: true
+detection:
+  body_weights: yolov8s.pt
+  body_conf: 0.35
+  body_iou: 0.55
+  body_imgsz: 640
+  body_classes:
+  - 0
+  body_max_det: 300
+  face_model_name: buffalo_l
+  face_det_size:
+  - 640
+  - 640
+  face_conf: 0.5
+  face_nms: 0.4
+  min_body_area: 512
+  min_face_size: 24
+  batch_size: 8
+  half: true
+tracking:
+  det_threshold: 0.35
+  max_age: 30
+  min_hits: 3
+  iou_threshold: 0.3
+  delta_t: 3
+  inertia: 0.2
+  use_byte: true
+  low_threshold: 0.1
+  max_trajectory: 64
+  reid_enabled: true
+association:
+  containment_threshold: 0.6
+  head_region_ratio: 0.45
+  centre_weight: 0.3
+  containment_weight: 0.5
+  scale_weight: 0.2
+  expected_face_ratio: 0.035
+  max_cost: 0.65
+alignment:
+  output_size:
+  - 112
+  - 112
+  reference_landmarks:
+  - - 38.2946
+    - 51.6963
+  - - 73.5318
+    - 51.5014
+  - - 56.0252
+    - 71.7366
+  - - 41.5493
+    - 92.3655
+  - - 70.7299
+    - 92.2041
+  template_size:
+  - 112
+  - 112
+  padding_ratio: 0.0
+  interpolation: linear
+  border_value:
+  - 0
+  - 0
+  - 0
+  max_roll_degrees: 45.0
+recognition:
+  architecture: ir50
+  weights: adaface_ir50_ms1mv2.ckpt
+  embedding_dim: 512
+  batch_size: 64
+  amp: true
+  input_mean:
+  - 0.5
+  - 0.5
+  - 0.5
+  input_std:
+  - 0.5
+  - 0.5
+  - 0.5
+  input_bgr: true
+  normalize: true
+  flip_tta: false
+quality:
+  min_norm: 18.0
+  max_norm: 48.0
+  adaptive: true
+  adaptive_percentile: 35.0
+  warmup_samples: 64
+  blur_threshold: 45.0
+  min_brightness: 25.0
+  max_brightness: 235.0
+  min_detection_score: 0.6
+  max_edge_truncation: 0.1
+  max_stored_per_track: 32
+fusion:
+  strategy: weighted_mean
+  ema_alpha: 0.3
+  min_samples: 3
+  max_samples: 32
+  quality_power: 2.0
+  renormalize: true
+search:
+  index_type: IndexFlatIP
+  use_gpu: false
+  top_k: 5
+  similarity_threshold: 0.35
+  margin_threshold: 0.05
+  unknown_label: UNKNOWN
+  nlist: 100
+  nprobe: 16
+  calibrate: true
+  target_far: 0.001
+rendering:
+  codec: libx264
+  pixel_format: yuv420p
+  crf: 20
+  preset: medium
+  output_name: annotated.mp4
+  draw_body: true
+  draw_face: true
+  draw_landmarks: true
+  draw_trajectory: true
+  draw_identity: true
+  draw_timestamp: true
+  trajectory_length: 48
+  box_thickness: 2
+  font_scale: 0.5
+  font_thickness: 1
+  unknown_color:
+  - 60
+  - 60
+  - 220
+  known_color:
+  - 80
+  - 200
+  - 90
+  face_color:
+  - 230
+  - 180
+  - 60
+  redact_unknown: false
+  redaction_kernel: 31
+runtime:
+  device: auto
+  seed: 1337
+  deterministic: true
+  cudnn_benchmark: false
+  allow_tf32: false
+  pin_memory: true
+  num_workers: 2
+  cuda_streams: 2
+  empty_cache_every: 0
+  max_vram_fraction: 0.92
+  profile: true
+  log_level: INFO
+governance:
+  retention_days: 30
+  persist_crops: false
+  persist_embeddings: true
+  audit_log: true
+  audit_log_name: identification_audit.jsonl
+  require_consent_manifest: true

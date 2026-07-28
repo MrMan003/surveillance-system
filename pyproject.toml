@@ -1,0 +1,15 @@
+[build-system]
+requires = ["setuptools>=68.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "surveillance-system"
+version = "0.1.0"
+description = "Forensic VFR video analysis"
+requires-python = ">=3.10"
+
+[tool.setuptools]
+packages = ["configs", "datasets", "detection", "tracking", "association", "alignment", "recognition", "search", "rendering", "utils"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

@@ -1,0 +1,34 @@
+# Local macOS development dependencies.
+#
+# Differs from requirements.txt in one place: onnxruntime-gpu publishes no
+# macOS wheels, so `pip install -r requirements.txt` fails on a Mac. Plain
+# onnxruntime runs SCRFD on CPU, which is slow but correct -- fine for writing
+# and testing code. Accuracy is identical; only throughput differs.
+#
+# Install:  pip install -r requirements-local.txt
+
+numpy>=1.26.0,<2.1.0
+scipy>=1.11.0
+PyYAML>=6.0.1
+
+torch>=2.1.0
+torchvision>=0.16.0
+torchmetrics>=1.3.0
+
+av>=12.0.0,<15.0.0
+opencv-python-headless>=4.9.0.80
+
+ultralytics>=8.2.0,<8.4.0
+insightface==0.7.3
+onnxruntime>=1.18.0
+
+faiss-cpu>=1.8.0
+
+tqdm>=4.66.0
+psutil>=5.9.0
+
+# dev tooling
+pytest>=8.0.0
+pytest-cov>=5.0.0
+mypy>=1.9.0
+ruff>=0.4.0
