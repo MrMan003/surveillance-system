@@ -25,15 +25,18 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from pathlib import Path
 from types import TracebackType
-from typing import List, Optional, Sequence, Type
+from typing import Generic, List, Optional, Sequence, Tuple, Type, TypeVar
 
 import numpy as np
 
 from configs.config import DetectionConfig, PathConfig, RuntimeConfig
 from utils.log import get_logger
-from utils.types import Detection
+__all__ = ["DetectorError", "DetectorStats", "Detector", "DetectionT"]
 
-__all__ = ["DetectorError", "DetectorStats", "Detector"]
+#: Detections are typed per detector: the body detector emits ``Detection``,
+#: the face detector emits ``FaceDetection``. Parameterising the base class
+#: keeps both statically checkable without weakening either to ``Any``.
+DetectionT = TypeVar("DetectionT")
 
 LOGGER = get_logger(__name__)
 
@@ -110,7 +113,7 @@ class DetectorStats:
         self.latencies_ms.clear()
 
 
-class Detector(ABC):
+class Detector(ABC, Generic[DetectionT]):
     """Base class for batch detectors.
 
     Subclasses implement :meth:`_infer`; batching, timing, statistics and
@@ -174,7 +177,7 @@ class Detector(ABC):
 
     # -- lifecycle --------------------------------------------------------- #
     @abstractmethod
-    def load(self) -> "Detector":
+    def load(self) -> "Detector[DetectionT]":
         """Load model weights onto the target device.
 
         Returns:
@@ -185,7 +188,7 @@ class Detector(ABC):
         """
 
     @abstractmethod
-    def _infer(self, frames: Sequence[np.ndarray]) -> List[List[Detection]]:
+    def _infer(self, frames: Sequence[np.ndarray]) -> List[List[DetectionT]]:
         """Run one forward pass over a batch.
 
         Args:
@@ -199,7 +202,7 @@ class Detector(ABC):
     def close(self) -> None:
         """Release model resources and free device memory."""
 
-    def __enter__(self) -> "Detector":
+    def __enter__(self) -> "Detector[DetectionT]":
         """Load the model on entering a ``with`` block."""
         return self.load()
 
@@ -213,7 +216,7 @@ class Detector(ABC):
         self.close()
 
     # -- inference --------------------------------------------------------- #
-    def detect(self, frame: np.ndarray) -> List[Detection]:
+    def detect(self, frame: np.ndarray) -> List[DetectionT]:
         """Detect in a single frame.
 
         Args:
@@ -224,7 +227,7 @@ class Detector(ABC):
         """
         return self.detect_batch([frame])[0]
 
-    def detect_batch(self, frames: Sequence[np.ndarray]) -> List[List[Detection]]:
+    def detect_batch(self, frames: Sequence[np.ndarray]) -> List[List[DetectionT]]:
         """Detect across a sequence of frames, chunked to the configured batch size.
 
         Args:
@@ -241,7 +244,7 @@ class Detector(ABC):
         if not frames:
             return []
 
-        results: List[List[Detection]] = []
+        results: List[List[DetectionT]] = []
         size = self._config.batch_size
 
         for start in range(0, len(frames), size):
@@ -281,12 +284,21 @@ class Detector(ABC):
         if not self._loaded:
             raise DetectorError(f"{self._name} not loaded; call load() first")
 
-        height, width = size or (self._config.body_imgsz, self._config.body_imgsz)
+        height, width = size or self._warmup_size
         blank = np.zeros((height, width, 3), dtype=np.uint8)
         LOGGER.debug("Warming up %s for %d iteration(s)", self._name, iterations)
         for _ in range(iterations):
             self._infer([blank])
         self.stats.reset()
+
+    @property
+    def _warmup_size(self) -> Tuple[int, int]:
+        """Synthetic frame size used by :meth:`warmup`, as ``(height, width)``.
+
+        Overridden by detectors whose native input differs from the body
+        detector's square inference resolution.
+        """
+        return self._config.body_imgsz, self._config.body_imgsz
 
     # -- weight resolution ------------------------------------------------- #
     def _resolve_weights(self, weights: str) -> str:

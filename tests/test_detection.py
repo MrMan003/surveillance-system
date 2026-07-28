@@ -281,3 +281,148 @@ def test_yolo_close_is_idempotent(config) -> None:
     detector.close()
     detector.close()
     assert detector.is_loaded is False
+
+
+# --------------------------------------------------------------------------- #
+# Face detector
+# --------------------------------------------------------------------------- #
+SCRFD_WEIGHTS = REPO_ROOT / "weights" / "models" / "buffalo_l" / "det_10g.onnx"
+requires_scrfd = pytest.mark.skipif(
+    not SCRFD_WEIGHTS.is_file(), reason="buffalo_l/det_10g.onnx not in weights/"
+)
+
+
+@requires_scrfd
+def test_scrfd_loads(config) -> None:
+    """SCRFD must load from the local pack without pulling the whole zoo."""
+    from detection.face_detector import FaceDetector
+
+    with FaceDetector(config.detection, config.runtime, config.paths) as detector:
+        assert detector.is_loaded is True
+
+
+@requires_scrfd
+def test_scrfd_blank_frame_finds_nothing(config) -> None:
+    """A blank frame must yield no faces."""
+    from detection.face_detector import FaceDetector
+
+    with FaceDetector(config.detection, config.runtime, config.paths) as detector:
+        assert detector.detect(np.zeros((480, 640, 3), dtype=np.uint8)) == []
+
+
+@requires_scrfd
+def test_scrfd_emits_five_landmarks(config) -> None:
+    """Every face must carry exactly five points, or it cannot be aligned."""
+    from detection.face_detector import FaceDetector
+
+    frame = np.random.default_rng(5).integers(0, 255, (480, 640, 3), dtype=np.uint8)
+    with FaceDetector(config.detection, config.runtime, config.paths) as detector:
+        for face in detector.detect(frame):
+            assert face.landmarks.shape == (5, 2)
+            assert face.landmarks.flags["C_CONTIGUOUS"]
+
+
+@requires_scrfd
+def test_scrfd_min_face_size_filter(config) -> None:
+    """Raising min_face_size must not increase the face count."""
+    from detection.face_detector import FaceDetector
+
+    frame = np.random.default_rng(6).integers(0, 255, (480, 640, 3), dtype=np.uint8)
+    with FaceDetector(config.detection, config.runtime, config.paths) as detector:
+        baseline = len(detector.detect(frame))
+
+    strict = SurveillanceConfig.from_dict(
+        {"runtime": {"device": "cpu"}, "detection": {"min_face_size": 400}}
+    )
+    with FaceDetector(strict.detection, strict.runtime, strict.paths) as detector:
+        assert len(detector.detect(frame)) <= baseline
+
+
+def test_scrfd_requires_cuda_provider_when_cuda_requested() -> None:
+    """A missing CUDA provider must raise rather than silently use the CPU.
+
+    Falling back quietly would move SCRFD onto the CPU, where it dominates
+    wall-clock while every other signal still looks healthy.
+    """
+    import onnxruntime as ort
+
+    if "CUDAExecutionProvider" in ort.get_available_providers():
+        pytest.skip("CUDA provider present; the fallback path cannot be exercised")
+
+    from detection.face_detector import FaceDetector
+
+    cfg = SurveillanceConfig.from_dict({"runtime": {"device": "cpu"}})
+    detector = FaceDetector(cfg.detection, cfg.runtime, cfg.paths)
+    detector._device = "cuda"  # noqa: SLF001 - deliberate injection
+    with pytest.raises(DetectorError, match="CUDAExecutionProvider"):
+        detector._providers()  # noqa: SLF001
+
+
+# --------------------------------------------------------------------------- #
+# Combined detector
+# --------------------------------------------------------------------------- #
+def test_combined_requires_at_least_one_detector(config) -> None:
+    """Disabling both detectors is a configuration error, not a no-op."""
+    from detection.combined import CombinedDetector
+
+    with pytest.raises(ValueError):
+        CombinedDetector(
+            config.detection, config.runtime, config.paths,
+            detect_bodies=False, detect_faces=False,
+        )
+
+
+def test_combined_requires_load(config) -> None:
+    """Inference before load() must raise."""
+    from detection.combined import CombinedDetector
+
+    combined = CombinedDetector(config.detection, config.runtime, config.paths)
+    with pytest.raises(DetectorError, match="not loaded"):
+        combined.detect(np.zeros((64, 64, 3), dtype=np.uint8))
+
+
+def test_combined_rejects_mismatched_frame_numbers(config) -> None:
+    """A frame_numbers list of the wrong length must raise, not misalign."""
+    from detection.combined import CombinedDetector
+
+    combined = CombinedDetector(config.detection, config.runtime, config.paths)
+    combined.body = FakeDetector(config.detection, config.runtime).load()
+    combined.face = None
+    combined._loaded = True  # noqa: SLF001
+    frames = [np.zeros((64, 64, 3), dtype=np.uint8)] * 3
+    with pytest.raises(ValueError, match="frame_numbers"):
+        combined.detect_batch(frames, frame_numbers=[1, 2])
+
+
+def test_frame_detections_reports_totals() -> None:
+    """The result object must expose counts across both detectors."""
+    from detection.combined import FrameDetections
+
+    box = BoundingBox(0, 0, 10, 10)
+    result = FrameDetections(
+        frame_number=7,
+        bodies=[Detection(box=box, score=0.9)],
+        faces=[],
+    )
+    assert len(result) == 1
+    assert result.is_empty is False
+    assert FrameDetections(frame_number=0).is_empty is True
+
+
+@requires_weights
+@requires_scrfd
+def test_combined_runs_both_detectors(config) -> None:
+    """Both detectors must run and results must align with input order."""
+    from detection.combined import CombinedDetector
+
+    frames = [
+        np.random.default_rng(7).integers(0, 255, (240, 320, 3), dtype=np.uint8)
+        for _ in range(3)
+    ]
+    with CombinedDetector(config.detection, config.runtime, config.paths) as combined:
+        results = combined.detect_batch(frames, frame_numbers=[10, 11, 12])
+
+    assert [r.frame_number for r in results] == [10, 11, 12]
+    summary = combined.stats_summary()
+    assert summary["body"]["frames"] == 3
+    assert summary["face"]["frames"] == 3

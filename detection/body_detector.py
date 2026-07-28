@@ -27,7 +27,7 @@ __all__ = ["BodyDetector"]
 LOGGER = get_logger(__name__)
 
 
-class BodyDetector(Detector):
+class BodyDetector(Detector[Detection]):
     """YOLOv8s person detector.
 
     Ultralytics performs letterboxing and coordinate inversion internally and
