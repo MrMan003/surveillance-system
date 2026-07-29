@@ -1,7 +1,7 @@
-"""utils package."""
 """Shared types, geometry helpers and logging for the surveillance system."""
 
 from utils.log import AuditLogger, ColourFormatter, get_logger, setup_logging
+from utils.profiling import PipelineProfiler, StageStats
 from utils.types import (
     BoundingBox,
     Detection,
@@ -21,6 +21,8 @@ __all__ = [
     "BoundingBox",
     "ColourFormatter",
     "Detection",
+    "PipelineProfiler",
+    "StageStats",
     "FaceDetection",
     "TrackState",
     "box_areas",
