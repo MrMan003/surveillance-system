@@ -245,19 +245,6 @@ During runtime only similarity search is performed.
 
 ---
 
-# Future Improvements
-
-- Multi-camera tracking
-- Cross-camera re-identification
-- Live RTSP streaming
-- Real-time alerts
-- Person re-identification
-- Behaviour anomaly detection
-- Distributed inference
-- GPU optimisation
-
----
-
 # Example Output
 
 ✔ Person Detection
@@ -274,8 +261,4 @@ During runtime only similarity search is performed.
 
 ---
 
-# Why This Project?
 
-This project demonstrates the integration of modern deep learning with classical computer vision algorithms to build a scalable surveillance platform.
-
-Instead of simply recognising faces, the system converts raw CCTV footage into structured, searchable intelligence through modular AI components, robust tracking, efficient similarity search, and comprehensive audit logging.
