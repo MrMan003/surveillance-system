@@ -6,7 +6,7 @@ Unlike traditional CCTV systems that simply record video for later review, this 
 
 ---
 
-## ✨ Features
+##  Features
 
 -  Real-time person detection using **YOLOv8**
 -  Face detection with **SCRFD**
